@@ -1,0 +1,206 @@
+/**
+ * 
+ */
+package com.rs_search_relevancy.test_search.decimal_points;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ec.containers.pojo.EndecaItem;
+import com.ec.endeca.EndecaConnnection;
+import com.ec.endeca.EndecaResult;
+import com.ec.endeca.EndecaResultsGetter;
+import com.ec.utils.TestConfigReader;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.HttpENEConnection;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 23 May 2016 at 13:26:12
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+@RunWith(Parameterized.class)
+public class TestUkFullStop {
+    
+    private String searchInterface;
+    private String searchTerm;
+    private String wildCard;
+    private String UoM;
+    private Pattern wholeUomPattern;
+    private Pattern digitOnlyPattern;
+    private Pattern includingSpecialCharsPattern;
+    
+    private ArrayList<HashMap<EndecaItem, ArrayList<String>>> passedItems = new ArrayList<HashMap<EndecaItem, ArrayList<String>>>() ;
+    private ArrayList<HashMap<EndecaItem, ArrayList<String>>> failedItems = new ArrayList<HashMap<EndecaItem, ArrayList<String>>>();
+    
+    private String opts = "mode matchall";
+
+
+    private TestConfigReader testConfigReader = new TestConfigReader();
+    
+    
+    @Parameterized.Parameters(name="Test {1} decimal point test")
+    public static Collection<Object[]> createTestData(){
+        return  Arrays.asList(new Object[][] {
+            { "I18NLDescTaxonomyBrandSearchTerm2", "0.5 volt battery", "N", "v" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "5a fuse", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "5v power", "N", "v" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "3a", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "0.3a", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "0.5a fuse", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "0.5a fuse", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "0.5 amp mcb", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "5 a mcb", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "0.1a", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "1a", "N", "a" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "2.5mm cable", "N", "mm" },
+            { "I18NLDescTaxonomyBrandSearchTerm2", "15mm", "N", "mm" },
+            
+        });
+    }
+    
+    public TestUkFullStop(String searchInterface, String searchTerm, String wildCard, String UoM){
+        this.searchInterface = searchInterface;
+        this.searchTerm = searchTerm;
+        this.wildCard = wildCard;
+        this.UoM = UoM;
+    }
+        
+    @Test
+    public void fullStopTest(){
+        compilePatterns(UoM);
+        EndecaResultsGetter getItemsHelper = new EndecaResultsGetter();
+        EndecaConnnection CONN = testConfigReader.getEndecaConnGivenTestConfig();
+        HttpENEConnection endecaConn = CONN.getConnection();
+        EndecaResult result = null;
+        try {
+            result = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm, opts, wildCard);
+        } catch (ENEQueryException e) {
+            e.printStackTrace();
+        }
+        
+        System.out.println("Number of item found: " + result.getEndecaItems().size());
+        String measure = getAllPatternMatches(searchTerm).get(0);
+        System.out.println("Measure found : " + measure);
+        for(EndecaItem item : result.getEndecaItems()){
+            List<String> matchsOnLongDesc = getAllPatternMatches(item.getLongDesc());
+            List<String> matchOnAttributes = getAllPatternMatches(item.getAttributes());
+            addToPassedOrFailed(measure , matchsOnLongDesc, matchOnAttributes, item);
+        }
+        
+        assertPassedAndFailed();
+    }
+    
+    private String getFirstMatchUsingRegex(String sentence){
+        Matcher matcher = wholeUomPattern.matcher(sentence);
+        String foundUoM = null;
+        if (matcher.find())
+        {
+            System.out.println(matcher.group(0));
+            foundUoM = matcher.group(0);
+        }
+        return foundUoM;
+    }
+    
+    private void compilePatterns(String UoM){
+        
+        String patternWithUoM = "\\d{1,4}\\.?\\d{0,4}?\\s?" + "[" + UoM.toLowerCase() + UoM.toUpperCase() + "]";
+        wholeUomPattern = Pattern.compile(patternWithUoM);
+        
+        String patternWithoutUoM = "\\d{1,4}\\.?\\d{0,2}?";
+        digitOnlyPattern = Pattern.compile(patternWithoutUoM);
+        
+        String patternWithSpecialChars = "\\d{1,4}\\.?\\d{0,2}?\\d/|→[" + UoM.toLowerCase() + UoM.toUpperCase() + "]";
+        includingSpecialCharsPattern = Pattern.compile(patternWithSpecialChars);
+    }
+        
+    private List<String> getAllPatternMatches(String query){
+        List<String> allMatches = new ArrayList<String>();
+        if(query != null){
+            Matcher matcher = wholeUomPattern.matcher(query);
+            while (matcher.find()) {
+            	if (!allMatches.contains(matcher.group()))
+                allMatches.add(matcher.group());
+              }
+        }
+        return allMatches;
+    }
+    
+    private void addToPassedOrFailed(String measure, List<String> descriptionList, List<String> attributeList, EndecaItem item){
+        ArrayList<String> failedMatches = new ArrayList<String>();
+        ArrayList<String> passedMatches = new ArrayList<String>();
+        String QueryUnitOnly = getUnitOnly(measure);
+       
+        for(String description : descriptionList){
+            String unitOnly = getUnitOnly(description);
+            if(unitOnly.equals(QueryUnitOnly)){
+                passedMatches.add(description);
+            }else{
+                failedMatches.add(description);
+            } 
+        }
+        
+        for(String attribute : attributeList){
+            String unitOnly = getUnitOnly(attribute);
+            if(unitOnly.equals(QueryUnitOnly) || attribute.contains(QueryUnitOnly)){
+                passedMatches.add(attribute);
+            }else{
+                failedMatches.add(attribute);
+            } 
+        }
+        
+        HashMap<EndecaItem, ArrayList<String>> itemMap = new HashMap<EndecaItem, ArrayList<String>>();
+        if(passedMatches.size() > 0){
+            
+            itemMap.put(item, passedMatches);
+            passedItems.add(itemMap);
+        }else{
+            itemMap.put(item, failedMatches);
+            failedItems.add(itemMap);
+        }
+        
+    }
+    
+    private String getUnitOnly(String sent){
+        Matcher matcher = digitOnlyPattern.matcher(sent);
+        String found = matcher.find() ? matcher.group(0) : null;
+        return found;
+    }
+    
+    private void assertPassedAndFailed(){
+        for(HashMap<EndecaItem, ArrayList<String>> failedItemMap : failedItems){
+            Iterator it = failedItemMap.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry pair = (Map.Entry)it.next();
+                EndecaItem item = (EndecaItem) pair.getKey();
+                System.out.println("\n For query: " + searchTerm + ", Failed on items : " + pair.getValue());
+                item.prettyPrint();
+
+                it.remove(); // avoids a ConcurrentModificationException
+            }
+        }
+        Assert.assertTrue(String.format("For query: {%s}, number of failed items : {%s} ", searchTerm, failedItems.size()), failedItems.size() == 0);    
+    }
+}
+
+
+    
+

@@ -1,0 +1,15 @@
+#WebCrawler properties
+#Options phantomJS, firefox, chrome
+driver=CHROME
+phantomJSDriverPath=D://java-practise//Tools//drivers//phantomjs-2.1.1-windows//bin//phantomjs.exe
+firefoxDriverPath=null
+chromeDriverPath=.//Tools//drivers//chrome//chromedriver.exe
+ieDriverPath =null
+implicitTimeOut=10
+webCrawlerCount=2
+
+#Number of bots picking up test cases to target cupid api
+cupidBots=3
+
+#Number of endecker bots using dao
+endeckerBots=0

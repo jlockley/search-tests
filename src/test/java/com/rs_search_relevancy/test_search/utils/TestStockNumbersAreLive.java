@@ -1,0 +1,88 @@
+package com.rs_search_relevancy.test_search.utils;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ec.containers.pojo.EndecaItem;
+import com.ec.endeca.EndecaConnection;
+import com.ec.endeca.EndecaHelpers;
+import com.ec.endeca.EndecaResult;
+import com.ec.endeca.EndecaResultsGetter;
+import com.ec.utils.TestConfigReader;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.HttpENEConnection;
+
+@RunWith(Parameterized.class)
+public class TestStockNumbersAreLive {
+	
+    private String searchInterface;
+    private String searchTerm;
+    private String wildCard;
+    private boolean liveProduct;
+    
+    private TestConfigReader testConfigReader = new TestConfigReader();
+    
+    public TestStockNumbersAreLive(String searchInterface, String searchTerm, boolean liveProduct, String wildCard){
+    	this.searchInterface = searchInterface;
+    	this.searchTerm = searchTerm; 
+    	this.liveProduct = liveProduct;
+    	this.wildCard = wildCard;
+    }
+    
+    @Parameterized.Parameters(name="{1} Stock number predictive search. Interface: {0}")
+    public static Collection<Object[]> createTestData(){ 
+        return Arrays.asList(new Object[][] {
+            { "I18NRSStockNumber", "0101819", true, "NONE"},
+            { "I18NRSStockNumber", "3016812", true, "NONE"},
+            { "I18NRSStockNumber", "7845730", true, "NONE"},
+            { "I18NRSStockNumber", "0548206", true, "NONE"},
+            { "I18NRSStockNumber", "8776812", true, "NONE"},
+            { "I18NRSStockNumber", "7589333", false, "NONE"},
+            { "I18NRSStockNumber", "7952333", false, "NONE"},
+            { "I18NRSStockNumber", "3306654", false, "NONE"},
+            { "I18NRSStockNumber", "0515619", false, "NONE"},
+            { "I18NRSStockNumber", "7589333", false, "NONE"},
+            
+        });
+    }
+    
+    @Test
+    public void predictiveStockNumberTest(){
+        EndecaResultsGetter getItemsHelper = new EndecaResultsGetter();
+        EndecaConnection CONN = testConfigReader.getEndecaConnGivenTestConfig();
+        HttpENEConnection endecaConn = CONN.getConnection();
+        EndecaResult result = null;
+        String opts = "mode matchall";
+        
+        try {
+           result = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm, opts, wildCard);
+        } catch (ENEQueryException e) {
+            e.printStackTrace();
+        }
+        assertResultIsLive(result);       
+    }
+    
+    private void assertResultIsLive(EndecaResult result){
+    	List<EndecaItem> resultItems = result.getEndecaItems();
+    	for (EndecaItem item : resultItems){
+    		System.out.println(searchTerm);
+    		item.prettyPrint();
+    		if (!liveProduct){
+    	    	Assert.assertTrue(item.getSearchDiscon().toString().equals("Y"));
+       		}else{
+       			Assert.assertTrue(item.getSearchDiscon().toString().equals("N"));
+       		}
+    	}
+
+    }
+    
+}
+
+

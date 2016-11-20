@@ -1,0 +1,173 @@
+/**
+ * 
+ */
+package com.rs_search_relevancy.test_search.similar_search;
+
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ec.analytics.checks.generics.groupItemGenerics;
+import com.ec.containers.pojo.EndecaItem;
+import com.ec.endeca.EndecaConnection;
+import com.ec.endeca.EndecaResult;
+import com.ec.endeca.EndecaResultsGetter;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.HttpENEConnection;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 7 Apr 2016 at 10:42:36
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+
+@RunWith(Parameterized.class)
+public class TestSearchTypeComparison {
+	
+	private static ArrayList<String> listOfFamilies;
+	
+	@Before
+    public void familyList() {
+    	listOfFamilies = new ArrayList<String>() {
+            {
+            	add("Automotive Fuse");
+            	add("Bolted Tag Fuse");
+            	add("Bottle Fuse");
+            	add("Cartridge Fuse");
+            	add("Centered Tag Fuse");
+            	add("Hole Mounted Tag Fuse");
+            	add("Non-resettable Surface Mount Fuse");
+            	add("Non-resettable Thermal Fuse");
+            	add("Non-Resettable Wire Ended Fuse");
+            	add("Offset Tag Fuse");
+            	add("Resettable Surface Mount Fuse");
+            	add("Resettable Thermal Fuse");
+            	add("Resettable Wire Ended Fuse");
+            	add("Slotted Tag Fuse");
+
+             }
+        };
+
+
+    }
+	
+    private String searchInterface;
+    private String searchTerm;
+    private String searchTerm2;
+    private String wildCard;
+    private static TreeSet<EndecaItem> itemsFromSearchOne; 
+    private static TreeSet<EndecaItem> itemsFromSearchTwo; 
+//    private static ArrayList<String> listOfFamilies = familyList(); 
+
+    public TestSearchTypeComparison(String searchInterface, String searchTerm, String searchTerm2, String wildCard) {
+    	this.searchInterface = searchInterface;
+    	this.searchTerm = searchTerm;
+    	this.searchTerm2 = searchTerm2;
+    	this.wildCard = wildCard;
+   }
+    
+    @Parameterized.Parameters(name="MAN: {1} vs SAN : {2} Similar Search, Interface: {0}")
+    public static Collection<Object[]> createTestData(){ 
+        return Arrays.asList(new Object[][] {
+            { "I18NLDescTaxonomyBrandSearchTerm2", "12 Vac", "12Vac", "N"},
+            { "I18NLDescTaxonomyBrandSearchTerm2", "12 v", "12v", "N"},
+//            { "I18NLDescTaxonomyBrandSearchTerm2", "12 A", "12A", "N"},
+//            { "I18NLDescTaxonomyBrandSearchTerm2", "12 amp", "12amp", "N"}, 
+//            { "I18NLDescTaxonomyBrandSearchTerm2", "12 uf", "12uf", "N"},
+//            { "I18NLDescTaxonomyBrandSearchTerm2", "3 nf", "3nf", "N"},
+//            { "I18NKnownAsMPN", "40 nf", "40nf", "N"},
+//            { "I18NKnownAsMPN", "3 uf", "3uf", "N"},
+        });
+    }
+    
+    @Test
+    public void runCapacitorTests() {
+        
+        EndecaResultsGetter getItemsHelper = new EndecaResultsGetter();
+        HttpENEConnection endecaConn = EndecaConnection.SSPUK.getConnection();
+        EndecaResult result1 = null;
+        EndecaResult result2 = null;
+        String opts = "mode matchall";
+        
+        try {
+           result1 = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm, opts, wildCard);
+           result2 = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm2, opts, wildCard);
+        } catch (ENEQueryException e) {
+            e.printStackTrace();
+        }
+        
+        searchContainsResults(result1, result2);
+        
+    }
+    
+    public void searchContainsResults(EndecaResult result1, EndecaResult result2){
+        try{
+            itemsFromSearchOne = new TreeSet<EndecaItem>(result1.getEndecaItems());
+            itemsFromSearchTwo = new TreeSet<EndecaItem>(result2.getEndecaItems());
+        }catch(NullPointerException e){
+            throw new NullPointerException(String.format("1: {%s} 2: {%s} were used", itemsFromSearchOne, itemsFromSearchTwo));
+        }
+        
+        if (itemsFromSearchTwo.size() > 0 && itemsFromSearchOne.size() > 0){
+        	removeSearchTwoFromSearchOne(itemsFromSearchOne, itemsFromSearchTwo);
+        }else{
+        	System.out.println("MAN: " + itemsFromSearchOne.size() + "SAN: " + itemsFromSearchTwo.size());  
+        }
+               
+    }
+    
+    public void removeSearchTwoFromSearchOne(TreeSet<EndecaItem> resultsTreeOne, TreeSet<EndecaItem> resultsTreeTwo){
+    	resultsTreeTwo.removeAll(resultsTreeOne);
+    	removeUnrelatedItems(resultsTreeTwo);
+    }
+    
+    public void removeUnrelatedItems(TreeSet<EndecaItem> treeResultsTwo){
+        TreeSet<EndecaItem> resultsTreeTwoClone = (TreeSet<EndecaItem>) treeResultsTwo.clone();
+        System.out.println(resultsTreeTwoClone.size());
+        for(EndecaItem item : treeResultsTwo){
+        	if(!listOfFamilies.contains(item.getFamilyGroup())){
+        		resultsTreeTwoClone.remove(item);
+        	}
+        }
+        assertResultsTreeIsZero(resultsTreeTwoClone);
+    }
+    
+//    if(itemsFromSearchTwoClone.size() > 0){
+//  	ArrayList<EndecaItem> itemBin = null;
+//  	ArrayList<EndecaItem> itemsContainDecimal = null;
+//  	String searchNumeric = searchTerm.replaceAll("[^\\d.]", "");
+//  	for(EndecaItem item : itemsFromSearchTwoClone){
+//  		if(item.getLongDesc().substring(item.getLongDesc().indexOf(searchNumeric), item.getLongDesc().indexOf(searchNumeric) - 1)  == "."){
+//  			itemsContainDecimal.add(item);
+//  		}else{
+//  			itemBin.add(item);
+//  		}
+//  	}
+//  	System.out.println("item bin: " + itemBin.size() + "Items with decimal: " + itemsContainDecimal.size());
+//    }
+    
+    public void assertResultsTreeIsZero(TreeSet<EndecaItem> resultsTreeTwo){
+        System.out.println(resultsTreeTwo.size());
+        assertTrue("SAN results are not all contained within MAN search", resultsTreeTwo.size() == 0);
+    }
+    
+    
+    
+}

@@ -1,0 +1,127 @@
+package com.rs_search_relevancy.test_search.utils;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.poi.hssf.usermodel.HSSFCell;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Row;
+
+import com.rs_search_relevancy.test_search.result_containers.SimilarSearchResult;
+
+
+public class Output {
+	
+	private static final List<String> SHEET_NAMES = getSheetNames();
+	
+	private static final List<String> COLUMN_NAMES = getColumnNames();
+	
+	private static List<String> getColumnNames(){
+		List<String> tempList = new ArrayList<String>();
+		tempList.add("term");
+		tempList.add("NumOfResults");
+		tempList.add("UniqueFamilies");
+		tempList.add("NumOfMatchedFamilies");
+		tempList.add("NumOfExpectedFamilies");
+		return tempList;
+	}
+	
+	private static List<String> getSheetNames(){
+		List<String> tempList = new ArrayList<String>();
+		tempList.add("SSP");
+		tempList.add("STATIC2");
+		tempList.add("PREP");
+		tempList.add("PROD");
+		return tempList;
+	}
+	
+	public static void toSpreadsheet(String testName, String env, String locale, 
+			SimilarSearchResult resultObj1, SimilarSearchResult resultObj2){
+		
+		HSSFWorkbook wb = getWorkBook(testName, locale);
+		HSSFSheet sheet = wb.getSheet(env);
+		//create headers
+		if (sheet.getLastRowNum() == 0){
+			//wb.setActiveSheet(wb.getSheetIndex(sheet.getSheetName()));
+			createNewSheet(sheet, resultObj1, resultObj2);
+		}else{
+			addToSheet(sheet, resultObj1, resultObj2);
+		}
+		writeToFile(wb, testName, locale);
+	}
+	
+	private static HSSFWorkbook createNewSpreadsheet(){
+		HSSFWorkbook wb = new HSSFWorkbook();
+		for(int sheetNum=0; sheetNum < SHEET_NAMES.size(); sheetNum++){
+			wb.createSheet(SHEET_NAMES.get(sheetNum));
+		}
+		System.out.println("Created " + wb.getNumberOfSheets() + " sheets in workboook");
+		return wb;
+	}
+	
+	private static void createNewSheet(HSSFSheet sheet, SimilarSearchResult resultObj1, 
+			SimilarSearchResult resultObj2){
+		HSSFRow headRow = sheet.createRow(0);
+		HSSFRow resultRow1 = sheet.createRow(1);
+		HSSFRow resultRow2 = sheet.createRow(2);
+		sheet.createRow(3);
+		for(int colNum = 0; colNum < COLUMN_NAMES.size(); colNum++){
+			String header = COLUMN_NAMES.get(colNum);
+			setColumnHeading(colNum, header, headRow);
+			setResultCell(colNum, header, resultRow1, resultObj1);
+			setResultCell(colNum, header, resultRow2, resultObj2);
+		}
+	}
+	
+	private static void addToSheet(HSSFSheet sheet, SimilarSearchResult resultObj1, 
+			SimilarSearchResult resultObj2){
+		HSSFRow resultRow1 = sheet.createRow(sheet.getLastRowNum()+1);
+		HSSFRow resultRow2 = sheet.createRow(sheet.getLastRowNum()+1);
+		sheet.createRow(sheet.getLastRowNum()+1);
+		for(int colNum = 0; colNum < COLUMN_NAMES.size(); colNum++){
+			String header = COLUMN_NAMES.get(colNum);
+			setResultCell(colNum, header, resultRow1, resultObj1);
+			setResultCell(colNum, header, resultRow2, resultObj2);
+		}
+	}
+	
+	private static void setColumnHeading(int colNum, String header, HSSFRow headRow){
+		HSSFCell headerCell = headRow.getCell(colNum, Row.CREATE_NULL_AS_BLANK);
+		headerCell.setCellValue(header);
+	}
+	
+	private static void setResultCell(int colNum, String header, HSSFRow resultRow, 
+			SimilarSearchResult resultObj){
+		HSSFCell resultCell = resultRow.getCell(colNum, Row.CREATE_NULL_AS_BLANK);
+		resultCell.setCellValue(resultObj.getVariableFromString(header));
+	}
+	
+	@SuppressWarnings("resource")
+	private static final HSSFWorkbook getWorkBook(String testName, String locale) {
+	    FileInputStream fis = null;
+	    HSSFWorkbook wb = new HSSFWorkbook();
+		try {
+			fis = new FileInputStream("D://testing_evidence//" + testName + "//" + locale + "_" +
+		testName + "_results.xls");
+			wb = new HSSFWorkbook(fis);
+		} catch (IOException e) {
+			wb = createNewSpreadsheet();
+		}
+	    return wb;
+	}
+
+	private static final void writeToFile(HSSFWorkbook wb, String testName, String locale){
+		try {	
+			FileOutputStream out = new FileOutputStream("D://testing_evidence//" + testName + "//" + locale + "_" + testName + "_results.xls");
+		    wb.write(out);
+		    out.close();
+		} catch (IOException e) {
+			e.printStackTrace(); 
+		}
+	}
+}

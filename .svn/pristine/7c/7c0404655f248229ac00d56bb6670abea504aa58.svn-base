@@ -1,0 +1,78 @@
+/**
+ * 
+ */
+package com.ec.web.scrappers;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.ec.containers.test.TestCasesContainer;
+import com.ec.web.drivers.WebDriverPageOps;
+import com.ec.web.pages.PageDiscovery;
+import com.ec.web.pages.SearchResultsPage;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 6 Apr 2016 at 16:17:39
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+public class NoThreadGeneralWebBot extends Scrapper{
+
+    
+    private TestCasesContainer testCases;
+    private SearchResultsPage searchResultsPage;
+    private PageDiscovery discoveryPage;
+    
+    public NoThreadGeneralWebBot(WebDriverPageOps webDriverPageOps){
+        super(webDriverPageOps);
+        this.searchResultsPage = new SearchResultsPage(webDriverPageOps);
+        this.discoveryPage = new PageDiscovery(webDriverPageOps);
+     }
+
+    @Override
+    public void run(){}
+    
+    public Integer getCategoriesCountForItem(String item, Boolean exitDriverAfterwards){
+        searchResultsPage.searchForTerm(item);
+        Integer numberOfCategories = searchResultsPage.getNumberOfCategories();
+        if(exitDriverAfterwards){
+            searchResultsPage.closeBrowser();
+        }
+        return numberOfCategories;  
+    }
+    
+    public String getScriptTagContents(String query, String tagName, Boolean exitDriverAfterwards){
+    	discoveryPage.searchForTerm(query);
+//    	BasePage returnPage = discoveryPage.discoverPage();
+//    	System.out.println(returnPage.getPageName());
+    	String tagProperty = searchResultsPage.getScriptTagProperty(tagName);
+        if(exitDriverAfterwards){
+            searchResultsPage.closeBrowser();
+        }
+        return tagProperty;
+    }
+    
+    public List<String> getPredictedItemsFromSearch(String query, Boolean exitDriverAfterwards, String stockNumText){
+    	searchResultsPage.typeIntoSearchBox(query);
+    	List<String> itemsWithTags = searchResultsPage.getPredictedItems(stockNumText);
+    	List<String> itemsWithoutTags = new ArrayList<String>();
+    	for (String item : itemsWithTags){
+    		itemsWithoutTags.add("0" + searchResultsPage.getPageOps().removeHtmlTagsFromString(item));
+    	}
+        if(exitDriverAfterwards){
+            searchResultsPage.closeBrowser();
+        }
+    	return itemsWithoutTags;
+    	
+    }
+            
+    private Integer getNumberOfCategories(){
+        return 1;
+    }
+}

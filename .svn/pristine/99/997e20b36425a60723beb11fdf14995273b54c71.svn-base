@@ -1,0 +1,82 @@
+/**
+ * 
+ */
+package com.ec.utils;
+
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.Properties;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 17 Mar 2016 at 15:26:40
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+public class CrawlerPropertiesReader {
+    
+    private Properties properties = new Properties();
+
+   
+    public CrawlerPropertiesReader(){
+        loadProperties();   
+    }
+    
+    public String getDriverName(){
+        return properties.getProperty("driver");
+    }
+    
+    public String getChromePath(){
+        return properties.getProperty("chromeDriverPath");
+    }
+    
+    public String getPhantomJSPath(){
+        return properties.getProperty("phantomJSDriverPath");
+    }
+    
+    public String getFirefoxPath(){
+        return properties.getProperty("firefoxDriverPath");
+    }
+    
+    public String getIEPath(){
+        return properties.getProperty("ieDriverPath");
+    }
+    
+    public Integer getImplicitTimeout(){
+        return Integer.parseInt(properties.getProperty("implicitTimeOut"));
+    }
+    
+    public Integer getWebCrawlerNumber(){
+        return Integer.parseInt(properties.getProperty("webCrawlerCount"));
+    }
+    
+    public void loadProperties(){
+    
+        FileInputStream input = null;
+        
+        try {
+            input = new FileInputStream("D:\\Java\\workspace\\rs-components-search-relevancy-automation\\src\\main\\resources\\crawler.properties");
+                                        
+            properties.load(input);            
+    
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        } finally {
+            if (input != null) {
+                try {
+                    input.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    
+    
+}

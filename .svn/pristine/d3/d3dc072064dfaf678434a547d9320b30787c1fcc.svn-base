@@ -1,0 +1,110 @@
+package com.rs_search_relevancy.test_search.similar_search;
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Scanner;
+
+public class GetCategoryCountData {
+	
+	public String getFilePath(String connName, String fileName, String category){
+		String env;
+		String locale;
+		if(connName.contains("STATIC2")){
+			String[] tempConn;
+			env = "STATIC2";
+			tempConn = connName.split("2");
+			locale = tempConn[1];
+		}else if (connName.contains("PREP")){
+			String[] tempConn;
+			env = "PREP";
+			tempConn = connName.split("EP");
+			locale = tempConn[1];
+		}else if(connName.contains("SSP")){
+			String[] tempConn;
+			env = "SSP";
+			tempConn = connName.split("P");
+			locale = tempConn[1];
+		}else{
+			String[] tempConn;
+			env = "PROD";
+			tempConn = connName.split("OD");
+			locale = tempConn[1];
+		}
+		return String.format("%s//%s//%s//%s", locale, env, fileName, category);
+	}
+	
+	public ArrayList<String> parseCsvAsList(String filename, String delimeter)
+	   {
+	   //Initialise new Array variable to store CSV information
+			ArrayList<String> dataFromFile= new ArrayList<String>();
+	        try{
+	            
+	            //Scan file data using configured delimeter
+	            Scanner scanner=new Scanner(new FileReader("D://test_run_data//capacitance_and_voltage_variations//" + filename + ".csv"));
+	            scanner.useDelimiter(delimeter);
+
+	            //Run until data is complete
+	            while(scanner.hasNext())
+	            {
+	               //Save next line to a string
+	               String dataInRow=scanner.nextLine();
+	               
+	               //Add array list to initiailised array list
+	               dataFromFile.add(dataInRow);
+	            }
+	            
+	            //Close the scanner once data is complete
+	            scanner.close();
+	            
+	        }catch (FileNotFoundException e){
+	           
+	            //Print stack trace if error is found
+	            e.printStackTrace();
+	        }
+	        
+	        //Return data from the file
+	        
+	        return dataFromFile;
+	   }
+	
+	public List<Object[]> parseCsv(String filename, String delimiter)
+	   {
+	   //Initialise new Array variable to store CSV information
+			List<Object[]> dataFromFile= new ArrayList<Object[]>() ;
+	        try{
+	            
+	            //Scan file data using parameterised delimiter
+	            Scanner scanner=new Scanner(new FileReader("D://test_run_data//capacitance_and_voltage_variations//" + filename + ".csv"));
+	            scanner.useDelimiter(delimiter);
+
+	            //Run until data is complete
+	            while(scanner.hasNext())
+	            {
+	               //Save next line to a string
+	               String dataInRow=scanner.nextLine();
+	               
+	               //Split the String based on the configured Delimiter
+	               String[] dataInRowArray = dataInRow.split(delimiter);
+	               
+	               //Save the result as an Object array
+	               Object[] dataInRowObjArray = dataInRowArray;
+	               
+	               //Add Object array to initialised array list
+	               dataFromFile.add(dataInRowObjArray);
+	            }
+	            //Close the scanner once data is complete
+	            scanner.close();
+	            
+	        }catch (FileNotFoundException e){
+	           
+	            //Print stack trace if error is found
+	            e.printStackTrace();
+	        }
+	        
+	        //Return data from the file as a list of Object arrays
+	        return dataFromFile;
+	   }
+}

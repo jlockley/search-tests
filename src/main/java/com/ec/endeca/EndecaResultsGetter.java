@@ -1,0 +1,167 @@
+/**
+ * 
+ */
+package com.ec.endeca;
+
+import java.util.ArrayList;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import com.ec.containers.pojo.EndecaItem;
+import com.endeca.navigation.AssocDimLocations;
+import com.endeca.navigation.DimLocation;
+import com.endeca.navigation.DimVal;
+import com.endeca.navigation.DimValIdList;
+import com.endeca.navigation.ENEQuery;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.ENEQueryResults;
+import com.endeca.navigation.ERec;
+import com.endeca.navigation.ERecList;
+import com.endeca.navigation.ERecSearch;
+import com.endeca.navigation.ERecSearchList;
+import com.endeca.navigation.ERecSortKey;
+import com.endeca.navigation.ERecSortKeyList;
+import com.endeca.navigation.HttpENEConnection;
+import com.endeca.navigation.Navigation;
+import com.endeca.navigation.PropertyMap;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 7 Apr 2016 at 17:32:33
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+public class EndecaResultsGetter {
+
+    private static final Logger LOGGER = LogManager.getLogger(EndecaResultsGetter.class);
+
+    private static final DimValIdList DEFAULT_VALUE_ID = new DimValIdList("0");
+    
+    private ArrayList<EndecaItem> blankEndecaItemList;
+    private boolean spellingCorrection = false;
+    private boolean autoPhrasing = false;
+    private ArrayList<EndecaItem> searchResultsList;
+    private String actualQuery;
+    private String searchTerm;
+    private EndecaResult endecaResult;
+
+
+
+    public EndecaResult runEndecaSearch(String searchInterface, HttpENEConnection endecaConn, String searchTerm, String opts, String wildCard, String sortByField)
+            throws ENEQueryException {
+        
+        searchTerm = EndecaHelpers.assignWildCardsToSearchTerm(wildCard, searchTerm);
+        ENEQuery endecaQuery = makeEndecaQuery(searchInterface, searchTerm, opts, sortByField);
+        ENEQueryResults result = executeEndecaQuery(endecaConn, endecaQuery);
+        if (result.containsNavigation()) {
+            Navigation nav = result.getNavigation();
+            searchResultsList = createItems(nav);
+            autoPhrasing = EndecaHelpers.checkForAutomaticPhrasing(nav);
+            spellingCorrection = EndecaHelpers.checkFromSpellingCorrection(nav);
+            actualQuery = EndecaHelpers.getActualSearchTerm(nav);
+            endecaResult = new EndecaResult(searchResultsList, spellingCorrection, autoPhrasing, actualQuery, searchTerm);
+        }else{
+            blankEndecaItemList = new ArrayList<EndecaItem>();
+            endecaResult = new EndecaResult(blankEndecaItemList, spellingCorrection, autoPhrasing, actualQuery, searchTerm);
+        }
+        return endecaResult;
+    }
+    
+    public EndecaResult runEndecaSearch(String searchInterface, HttpENEConnection endecaConn, String searchTerm, String opts, String wildCard)
+            throws ENEQueryException {
+        return runEndecaSearch(searchInterface, endecaConn, searchTerm, opts, wildCard, "P_salesUnitData");
+    }
+
+    
+    private ENEQueryResults executeEndecaQuery(HttpENEConnection endecaConn ,ENEQuery eneQuery) throws ENEQueryException{
+        ENEQueryResults result = endecaConn.query(eneQuery);
+        return result;
+    }
+    
+    private ENEQuery makeEndecaQuery(String searchInterface, String searchTerm, String opts, String sortByField)
+            throws ENEQueryException {
+        
+        ERecSortKeyList sortByList = new ERecSortKeyList();
+        ERecSortKey sortKey = new ERecSortKey(sortByField, false);
+        sortByList.add(sortKey);
+        ENEQuery eneQuery = new ENEQuery();
+        ERecSearch eRecSearch = new ERecSearch(searchInterface, searchTerm, opts);
+        ERecSearchList eRecSearchList = new ERecSearchList();
+        eRecSearchList.add(eRecSearch);
+        eneQuery.setNavActiveSortKeys(sortByList);
+        eneQuery.setNavERecSearches(eRecSearchList);
+        eneQuery.setNavDescriptors(DEFAULT_VALUE_ID);
+        eneQuery.setNavERecsOffset(0);
+        eneQuery.setNavNumERecs(5000);
+        eneQuery.setNavAllRefinements(true);
+        eneQuery.setNavERecSearchComputeAlternativePhrasings(true);
+        eneQuery.setNavERecSearchRewriteQueryWithAnAlternativePhrasing(true);
+        eneQuery.setLanguageId("en");
+//       eneQuery.setNavRecordFilter("AND(P_localeLifecycleStatus:90,NOT(P_packType:PRODUCTION_PACKED))");
+        eneQuery.setNavRecordFilter("AND(NOT(P_localeLifecycleStatus:90),NOT(P_packType:PRODUCTION_PACKED))");
+        return eneQuery;
+
+    }
+    
+    private ArrayList<EndecaItem> createItems(Navigation nav){
+        ERecList eRecResults = nav.getERecs();
+        ArrayList<EndecaItem> itemList = new ArrayList<>();
+        for (int I = 0; I < eRecResults.size(); I++) {
+            ERec r = (ERec) eRecResults.get(I);
+            PropertyMap propMap = r.getProperties();
+            String groupNbr = (String) propMap.get("P_groupNbr");
+            String id = "rscGlobalProductCatalog/Online/" + groupNbr;
+            String famName = StringUtils.stripAccents((String) propMap.get("P_famliyName"));
+            String brand = (String) propMap.get("P_brand");
+            String longDesc = (String) propMap.get("P_longDescription");
+            String manPartNum = (String) propMap.get("P_manufacturerPartNumber");
+            String primaryKeywrd = StringUtils.stripAccents((String) propMap.get("P_familyID"));
+            String imageID = (String) propMap.get("P_imagePrimary");
+            if(primaryKeywrd == null){
+                primaryKeywrd = "";
+            }
+            String locale = (String) propMap.get("P_locale");
+            String additionalSearchTerms = (String) propMap.get("P_additionalSearchTerms");
+            String familyID = getFamilyID(r);
+            String searchAttributes = (String) propMap.get("P_searchAttributeNameValue"); 
+            String searchDiscon = (String) propMap.get("P_searchDiscon");
+            String relevancyOrder = (String) propMap.get("P_relevancyOrder");
+            EndecaItem item = new EndecaItem(id, famName, brand, longDesc, manPartNum, primaryKeywrd, additionalSearchTerms, familyID, searchAttributes, groupNbr, searchDiscon, locale, imageID, relevancyOrder);
+            itemList.add(item);
+        }
+        return itemList;
+
+    }
+    
+    private String getFamilyID(ERec rec){
+         com.endeca.navigation.Dimension dimension = null;
+       
+             
+         com.endeca.navigation.AssocDimLocationsList dimValList = rec.getDimValues();
+         
+         for (int j=0; j < dimValList.size(); j++) {
+             // Get individual dimension and loop over its values
+             AssocDimLocations dim = (AssocDimLocations)dimValList.get(j);
+             for (int k=0; k < dim.size(); k++) {
+               // Get attributes from a specific dim val
+               DimLocation dimLoc = (DimLocation)dim.get(k);
+               DimVal dval = dimLoc.getDimValue();
+               String dimensionName = dval.getDimensionName();
+               if(dimensionName.equals("I18NsearchBytechnology")){
+                   String name = dval.getName();
+                   return StringUtils.stripAccents(name);
+               }
+             }
+         }
+         
+         return "No Family";
+         }
+}
+        

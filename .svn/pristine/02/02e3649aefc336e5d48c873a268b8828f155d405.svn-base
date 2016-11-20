@@ -1,0 +1,158 @@
+package com.rs_search_relevancy.test_search.similar_search;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+
+import com.ec.analytics.checks.generics.groupItemGenerics;
+import com.ec.containers.pojo.EndecaItem;
+import com.ec.endeca.EndecaConnnection;
+import com.ec.endeca.EndecaResult;
+import com.ec.endeca.EndecaResultsGetter;
+import com.ec.utils.TestConfigReader;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.HttpENEConnection;
+
+@RunWith(Parameterized.class)
+public class TestCategoryCount {
+	
+	private static GetCategoryCountData data = new GetCategoryCountData();
+	
+    private static TestConfigReader testConfigReader = new TestConfigReader();
+    private static EndecaConnnection CONN = testConfigReader.getEndecaConnGivenTestConfig(); 
+    
+    private String searchInterface;
+    private String searchTerm;
+    private String searchTerm2;
+   
+    private TreeSet<EndecaItem> uniqueProductsOne;
+    private TreeSet<EndecaItem> uniqueProductsTwo;
+    
+    private EndecaResult result1;
+    private EndecaResult result2;
+
+    public TestCategoryCount(String searchInterface, String searchTerm, String searchTerm2) throws Exception{
+    	this.searchInterface = searchInterface;
+    	this.searchTerm = searchTerm;
+    	this.searchTerm2 = searchTerm2;
+   }
+    
+    public static ArrayList<String> getFamilies(String category) {  
+    	String fileName = data.getFilePath(CONN.toString(), category, "category_count_families");
+    	return data.parseCsvAsList(fileName, ",");
+    }
+    
+    @Parameters(name= "{1} VS {2}")
+    public static List<Object[]> createTestData(){
+    	String fileName = data.getFilePath(CONN.toString(), "data", "category_count_data");
+    	List<Object[]> testData = data.parseCsv(fileName, ",");
+    	return testData;
+    }
+    
+    @Test
+    public void runSimilarSearchTests(){
+    	getResults();
+		Integer result1Size = result1.getEndecaItems().size();
+		Integer result2Size = result2.getEndecaItems().size();
+		Assert.assertTrue(String.format("Zero Reults Resuterned One:{%s} Two:{%s}", result1Size, result2Size), result1Size != 0 && result2Size != 0);
+		
+		Map<String, Integer> familyMapping = groupItemGenerics.groupByFamilyEndecaCount(result1.getEndecaItems());
+	    Map<String, Integer> familyMapping2 = groupItemGenerics.groupByFamilyEndecaCount(result2.getEndecaItems());
+    	
+	    printMappings(familyMapping, familyMapping2);
+		getUniqueItems(familyMapping, familyMapping2);
+		
+		//printUniqueItems();
+		Assert.assertTrue(String.format("Expected 0 unique Items in Expected Families - One: {%s},  Two: {%s}", uniqueProductsOne.size(),uniqueProductsTwo.size()), uniqueProductsOne.size() == 0 || uniqueProductsTwo.size() == 0);
+     }
+    
+    private void printMappings(Map<String, Integer> familyMapping, Map<String, Integer> familyMapping2){
+    	System.out.println("\n-------------------Family Mappings for search-----------------------");
+		System.out.println("Query " + searchTerm + " : " + familyMapping);
+		System.out.println("Query " + searchTerm2 + " : " + familyMapping2);
+		System.out.println("----------------------------------------------------------------------\n");
+    }
+    
+    private void getUniqueItems(Map<String, Integer> familyMapping, Map<String, Integer> familyMapping2){
+    	String category = searchTerm.substring(searchTerm.lastIndexOf(" ")+1);
+    	List<String> commonFamilies = getCommonFamilies(getFamilies(category), familyMapping, familyMapping2);
+    	System.out.println(String.format("Total number of results: {%s}-{%s} {%s}-{%s} Total common families: {%s} ",result1.getOriginalSearchTerm(), result1.getEndecaItems().size(), result2.getOriginalSearchTerm(), result2.getEndecaItems().size(), commonFamilies.size()));
+		for (String family : commonFamilies){
+		 List<TreeSet<EndecaItem>> uniqueProducts = SimilarSearchDiagnosisTools.compareResults(family, result1, result2);
+		 uniqueProductsOne = uniqueProducts.get(0);
+		 uniqueProductsTwo = uniqueProducts.get(1);
+		}
+    }
+    
+    private List<String> getCommonFamilies(ArrayList<String> familyList, Map<String, Integer> familyMapping, Map<String, Integer> familyMapping2){
+    	List<String> commonFamilyList = new ArrayList<String>();
+    	for (String family : familyList){
+			if (familyMapping.keySet().contains(family) && familyMapping2.keySet().contains(family)){
+				commonFamilyList.add(family);
+			}else if(!familyMapping.containsKey(family) && familyMapping2.containsKey(family)){
+				System.out.println(family + " Is a unique family");
+			}else if(!familyMapping2.containsKey(family) && familyMapping.containsKey(family)){
+				System.out.println(family + " Is a unique family");
+			}
+		}
+    	return commonFamilyList;
+    }
+    
+    private TreeSet<EndecaItem> removeRelevantUniqueItems(TreeSet<EndecaItem> itemList){
+    	TreeSet<EndecaItem> itemListClone = (TreeSet<EndecaItem>) itemList.clone();
+    	List<String[]> splitTerms = new ArrayList<String[]>();
+    	splitTerms.add(searchTerm.split(" "));
+    	splitTerms.add(searchTerm2.split(" "));
+    	
+        for (EndecaItem item : itemList){
+        	for(String[] section : splitTerms){
+        		for(String term : section){ 
+        			String desc = item.getLongDesc();
+        			String additonalTerms = item.getAdditionalSearchTerms();
+                	if(desc.contains(term)){
+                		itemListClone.remove(item);
+                	}
+        		}
+        	}
+
+        }
+        return itemListClone;
+    }
+    
+    private void printUniqueItems(){
+        if(!uniqueProductsOne.isEmpty() || !uniqueProductsTwo.isEmpty()){
+        	uniqueProductsOne = removeRelevantUniqueItems(uniqueProductsOne);
+            System.out.println("\n---------------------------unique items in " + result1.getOriginalSearchTerm()
+            	       + " ----------------------\n");
+     		for (EndecaItem item : uniqueProductsOne) {
+     		   item.prettyPrint();
+     		}
+     		uniqueProductsTwo = removeRelevantUniqueItems(uniqueProductsTwo);
+    		System.out.print("\n---------------------------unique items in " + result2.getOriginalSearchTerm()
+    			       + "  ----------------------\n");
+			for (EndecaItem item : uniqueProductsTwo) {
+			   item.prettyPrint();
+			}
+         }
+    }
+    
+    private void getResults(){
+    	HttpENEConnection endecaConn = CONN.getConnection();
+    	EndecaResultsGetter getItemsHelper = new EndecaResultsGetter();
+    	try {
+            result1 = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm, "mode+matchpartial", "NONE");
+            result2 = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm2, "mode+matchpartial", "NONE");
+         } catch (ENEQueryException e) {
+             e.printStackTrace();
+         }
+    }
+}

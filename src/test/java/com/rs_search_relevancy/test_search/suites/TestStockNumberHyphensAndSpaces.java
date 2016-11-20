@@ -1,0 +1,64 @@
+package com.rs_search_relevancy.test_search.suites;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ec.containers.pojo.EndecaItem;
+import com.ec.endeca.EndecaConnection;
+import com.ec.endeca.EndecaHelpers;
+import com.ec.endeca.EndecaResult;
+import com.ec.endeca.EndecaResultsGetter;
+import com.ec.utils.TestConfigReader;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.HttpENEConnection;
+
+@RunWith(Parameterized.class)
+public class TestStockNumberHyphensAndSpaces {
+	
+    private String searchInterface;
+    private String searchTerm;
+    private String wildCard;
+    private boolean liveProduct;
+    
+    private List<EndecaItem> unWantedResults = new ArrayList<EndecaItem>();
+    
+    private TestConfigReader testConfigReader = new TestConfigReader();
+    
+    public TestStockNumberHyphensAndSpaces(String searchInterface, String searchTerm, boolean liveProduct, String wildCard){
+    	this.searchInterface = searchInterface;
+    	this.searchTerm = searchTerm; 
+    	this.liveProduct = liveProduct;
+    	this.wildCard = wildCard;
+    }
+    
+    @Parameterized.Parameters(name="{1} Stock number predictive search. Interface: {0}")
+    public static Collection<Object[]> createTestData(){ 
+        return Arrays.asList(new Object[][] {
+            { "I18NsearchByStockNumber", "7589333", true, "NONE"}, 
+        });
+    }
+    
+    @Test
+    public void predictiveStockNumberTest(){
+        EndecaResultsGetter getItemsHelper = new EndecaResultsGetter();
+        EndecaConnection CONN = testConfigReader.getEndecaConnGivenTestConfig();
+        HttpENEConnection endecaConn = CONN.getConnection();
+        EndecaResult result = null;
+        String opts = "mode matchall";
+        
+        try {
+           result = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm, opts, wildCard);
+        } catch (ENEQueryException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    
+}

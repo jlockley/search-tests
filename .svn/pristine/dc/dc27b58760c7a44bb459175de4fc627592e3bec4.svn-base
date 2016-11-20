@@ -1,0 +1,26 @@
+/**
+ * 
+ */
+package com.rs_search_relevancy.test_search.suites;
+
+import org.junit.runner.RunWith;
+import org.junit.runners.Suite;
+
+import com.rs_search_relevancy.test_search.similar_search.TestCategoryCountCapacitors;
+import com.rs_search_relevancy.test_search.similar_search.TestCategoryCountContactors;
+import com.rs_search_relevancy.test_search.similar_search.TestCategoryCountFuses;
+import com.rs_search_relevancy.test_search.similar_search.TestCategoryCountMCBs;
+import com.rs_search_relevancy.test_search.similar_search.TestCategoryCountResistors;
+
+@RunWith(Suite.class)
+@Suite.SuiteClasses({
+    TestCategoryCountCapacitors.class,
+    TestCategoryCountResistors.class,
+//    TestSearchTypeComparison.class,
+    TestCategoryCountContactors.class,
+    TestCategoryCountFuses.class,
+    TestCategoryCountMCBs.class,
+})
+
+public class TestSuiteSimilarSearch {
+}

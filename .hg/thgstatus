@@ -1,0 +1,5 @@
+m
+msrc/main/resources
+msrc/test/java/com/rs_search_relevancy/test_search/similar_search
+msrc/test/java/com/rs_search_relevancy/test_search/utils
+mtarget/classes/com/ec/analytics/checks/generics

@@ -1,0 +1,90 @@
+/**
+ * 
+ */
+package com.rs_search_relevancy.test_search.similar_search;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+
+import org.apache.http.annotation.NotThreadSafe;
+
+import com.ec.analytics.checks.generics.groupItemGenerics;
+import com.ec.containers.pojo.EndecaItem;
+import com.ec.endeca.EndecaResult;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 12 Apr 2016 at 09:40:03
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+
+@NotThreadSafe
+public class SimilarSearchDiagnosisTools {
+    
+    private static TreeSet<EndecaItem> itemsInChosenFamilyOne; 
+    private static TreeSet<EndecaItem> itemsInChosenFamilyTwo; 
+    
+    static void findOddOneOut(String family, EndecaResult result1, EndecaResult result2) {
+
+        Map<String, List<EndecaItem>> familyList = groupItemGenerics.groupByFamilyEndecaList(result1.getEndecaItems());
+        Map<String, List<EndecaItem>> familyList2 = groupItemGenerics.groupByFamilyEndecaList(result2.getEndecaItems());
+        
+        try{
+            itemsInChosenFamilyOne = new TreeSet<EndecaItem>(familyList.get(family));
+            itemsInChosenFamilyTwo = new TreeSet<EndecaItem>(familyList2.get(family));
+        }catch(NullPointerException e){
+            throw new NullPointerException(String.format("family {%s} is only in one family", family));
+        }
+
+        TreeSet<EndecaItem> itemsInChosenFamilyOneClone = (TreeSet<EndecaItem>) itemsInChosenFamilyOne.clone();
+
+        itemsInChosenFamilyOne.removeAll(itemsInChosenFamilyTwo);
+        itemsInChosenFamilyTwo.removeAll(itemsInChosenFamilyOneClone);
+
+        System.out.println("\n---------------------------unique items in " + result1.getOriginalSearchTerm() + " for family : " + family
+                + " ----------------------\n");
+        for (EndecaItem item : itemsInChosenFamilyOne) {
+            item.prettyPrint();
+        }
+        System.out.print("\n---------------------------unique items in " + result2.getOriginalSearchTerm() + " for family :" + family
+                + "  ----------------------\n");
+        
+//        for (EndecaItem item : itemsInChosenFamilyTwo) {
+//            item.getAdditionalSearchTerms().contains(result2.getOriginalSearchTerm())
+//            item.prettyPrint();
+//        }
+        
+        for (EndecaItem item : itemsInChosenFamilyTwo) {
+            item.prettyPrint();
+        }
+
+    }
+    
+    private void removeItemsThatHaveUoMInAdditionalSearchTerm(String searchTerm){
+        for (EndecaItem item : itemsInChosenFamilyTwo) {
+        }
+        
+    }
+    
+    public static List<EndecaItem> checkItemsInList(List<EndecaItem> listToCheckAgainst, List<EndecaItem> items){
+        TreeSet<EndecaItem> itemsInMainSet;
+        TreeSet<EndecaItem> itemsInCheckSet;
+        itemsInMainSet = new TreeSet<EndecaItem>(listToCheckAgainst);
+        itemsInCheckSet = new TreeSet<EndecaItem>(items);
+        itemsInCheckSet.removeAll(itemsInMainSet);
+        List returnItems = new ArrayList<EndecaItem>();
+        returnItems.addAll(itemsInCheckSet);
+        return returnItems;
+      
+    }
+    
+     
+}

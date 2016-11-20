@@ -1,0 +1,118 @@
+/**
+ * 
+ */
+package com.rs_search_relevancy.test_search.similar_search;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Map;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ec.analytics.checks.generics.groupItemGenerics;
+import com.ec.endeca.EndecaConnnection;
+import com.ec.endeca.EndecaResult;
+import com.ec.endeca.EndecaResultsGetter;
+import com.ec.utils.TestConfigReader;
+import com.endeca.navigation.ENEQueryException;
+import com.endeca.navigation.HttpENEConnection;
+
+/**
+ * <pre>
+ * ************************************************************************************************
+ * Copyright (c) Electrocomponents Plc.
+ *
+ * Author  : <<<<user name>>>>
+ * Created : 7 Apr 2016 at 10:42:36
+ *
+ * ************************************************************************************************
+ * </pre>
+ */
+
+@RunWith(Parameterized.class)
+public class TestCategoryCountContactors {
+        
+    private String searchInterface;
+    private String searchTerm;
+    private String searchTerm2;
+    private String wildCard;
+
+    private ArrayList<String> listOfContactorsFamilies;
+    private TestConfigReader testConfigReader = new TestConfigReader();
+    
+    
+    @Before
+    public void initialize() {
+        listOfContactorsFamilies = new ArrayList<String>() {
+            {
+                add("Contactors");
+                add("Contactor & Control Relay Overloads");
+             }
+        };
+    }
+    
+    public TestCategoryCountContactors(String searchInterface, String searchTerm, String searchTerm2, String wildCard) {
+        this.searchInterface = searchInterface;
+        this.searchTerm = searchTerm;
+        this.searchTerm2 = searchTerm2;
+        this.wildCard = wildCard;
+   }
+
+    @Parameterized.Parameters(name="{1} vs {2} Similar Search Contactors, Interface: {0}")
+    public static Collection<Object[]> createTestData(){
+        return CategoryCountData.createContactorsData();           
+    }
+    
+    @Test
+    public void runSSContactorTests() {
+        
+        EndecaResultsGetter getItemsHelper = new EndecaResultsGetter();
+        EndecaConnnection CONN = testConfigReader.getEndecaConnGivenTestConfig();
+        HttpENEConnection endecaConn = CONN.getConnection();   
+        EndecaResult result1 = null;
+        EndecaResult result2 = null;
+        String opts = "mode matchall";
+        
+        try {
+           result1 = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm, opts, wildCard);
+           result2 = getItemsHelper.runEndecaSearch(searchInterface, endecaConn, searchTerm2, opts, wildCard);
+        } catch (ENEQueryException e) {
+            e.printStackTrace();
+        }
+        Map<String, Integer> familyMapping = groupItemGenerics.byFamilyCount(result1.getEndecaItems());
+        Map<String, Integer> familyMapping2 = groupItemGenerics.byFamilyCount(result2.getEndecaItems());
+        
+        
+        System.out.println("\n-------------------Family Mappings for search-----------------------");
+        System.out.println("Query " + searchTerm + " : " + familyMapping);
+        System.out.println("Query " + searchTerm2 + " : " + familyMapping2);
+        System.out.println("----------------------------------------------------------------------\n");
+        
+        result1.printResults();
+        result2.printResults();
+        
+        for (String key : familyMapping.keySet()){
+            Integer queryOneResult = familyMapping.get(key);
+            Integer queryTwoResult = familyMapping2.get(key);
+            for(String family : listOfContactorsFamilies ){
+                if(key.contains(family)){
+                    if(queryOneResult != queryTwoResult ){
+                        try{
+                        //SimilarSearchDiagnosisTools.findOddOneOut(family, result1, result2);
+                        }catch(NullPointerException e){
+                            Assert.assertTrue(e.getMessage(), false);
+                        }
+                    }
+                    Assert.assertEquals(String.format("asserting family {%s} contains same item count for query: {%s} vs {%s}",key, searchTerm, searchTerm2), queryOneResult, queryTwoResult);
+                    break;
+                }
+            }        
+        };
+    }
+    
+
+}

@@ -1,0 +1,7 @@
+package com.rs_search_relevancy.test_search;
+
+public class TestSearchMain {
+    
+   public static void main(String[] args) {
+   }
+}

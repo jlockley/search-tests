@@ -1,0 +1,112 @@
+package com.rs_search_relevancy.test_search.predictive;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.ec.utils.CrawlerPropertiesReader;
+import com.ec.utils.EnvPropertiesReader;
+import com.ec.web.scrappers.NoThreadGeneralWebBot;
+import com.ec.web.scrappers.ScrapperFactory;
+
+@RunWith(Parameterized.class)
+public class TestPredictiveFrontEnd {
+	
+    private String numberType;
+    private String query;
+    
+    private CrawlerPropertiesReader crawlerPropertiesReader = new CrawlerPropertiesReader();
+    private EnvPropertiesReader envPropertiesReader = new EnvPropertiesReader();
+    private ScrapperFactory scrapperFactory;
+    
+    private final static String ENV = "st2";
+    private final static String LOCALE = "f1";
+//    private final static String LOCALE = "de";
+//    private final static String LOCALE = "uk";       
+
+    @Before
+    public void initialize() {
+        this.scrapperFactory = new ScrapperFactory(crawlerPropertiesReader, envPropertiesReader);
+    }
+    
+    public TestPredictiveFrontEnd(String numberType, String query){
+    	this.numberType = numberType;
+    	this.query = query; 
+    }
+    
+    @Parameterized.Parameters(name="{0} Predictive test for Query: {1}")
+    public static Collection<Object[]> createTestData(){
+        return Arrays.asList(new Object[][] {
+            //france 
+            { "Code commande", "8157040"},
+            { "Code commande", "5186008"},
+            { "Code commande", "0751477"},
+            
+            { "Code commande", "4018027"},
+            { "Code commande", "2301260"},
+            { "Code commande", "1596013"},
+            
+            //UK
+//            {"RS Stock Number", "0101819"},    
+//            {"RS Stock Number", "3016812"},
+//            {"RS Stock Number", "7845730"},
+//            
+//            {"RS Stock Number", "3306654"},
+//            {"RS Stock Number", "0515619"},
+//            {"RS Stock Number", "7533368"},
+            
+//            Germany 
+//            {"RS Best.-Nr.", "1922759"},
+//            {"RS Best.-Nr.", "3240706"},
+//            {"RS Best.-Nr.", "2076396"},
+//            
+//            {"RS Best.-Nr.", "5086655"},   
+//            {"RS Best.-Nr.", "2432730"},
+//            {"RS Best.-Nr.", "3046699"}, 
+        });
+    }
+    
+    @Test
+    public void testPredictiveFrontEnd() {
+        System.out.println("Running predictive tests for " + numberType + " query : " + query);
+        NoThreadGeneralWebBot webBot = scrapperFactory.getNonThreadGeneralBot(LOCALE, ENV);
+        runAllQueries(webBot, query);
+    }
+    
+    private void runAllQueries(NoThreadGeneralWebBot webBot, String query){
+        int iter = 3;
+        while (iter < 8) {
+        	String iterQuery = query.substring(0, iter);
+        	System.out.println(iterQuery);
+        	if (iter == 7){
+        		List<String> iterItems = (webBot.getPredictedItemsFromSearch(iterQuery, true, numberType));
+        		System.out.println(iterQuery + iterItems);
+        		assertProductList(iterItems, iterQuery);
+        	}else{
+        		List<String> iterItems = (webBot.getPredictedItemsFromSearch(iterQuery, false, numberType));
+        		System.out.println(iterQuery + iterItems);
+        		assertProductList(iterItems, iterQuery);
+        	}
+        	iter++;
+        }  
+    }
+    
+    private void assertProductList(List<String> iterItems, String iterQuery){
+    	if (iterItems.size() > 0){
+           	String pattern = "((rs)|[ ]|[-] *?)";
+        	for (String productNbr : iterItems){
+        		Assert.assertTrue(String.format("Predicted stock number: {%s} does not contain query {%s}", productNbr, iterQuery), productNbr.replaceAll(pattern,"").contains(iterQuery.replaceAll(pattern, "")));
+        	}
+    	}else{
+    		Assert.assertFalse("No predicted items were return", iterItems.size() == 0);
+    	}
+    }    
+
+}
